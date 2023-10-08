@@ -22,7 +22,7 @@ Dpass
 
 #==================================================
 #设定文件服务器IP变量
-DCP_URL="http://47.242.79.56:36820/sh"
+DCP_URL="https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main"
 #虚拟网卡本地IP
 LOCAL_IP="10.8.0.1"
 #虚拟网卡本地分配IP范围
