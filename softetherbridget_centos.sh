@@ -9,7 +9,7 @@ Dpass(){
 	echo "=================================================="
 	echo ""
 	stty erase ^H
-	DcpPass=888888
+	DcpPass=51529502
 	read -p "请输入安装密码：" PASSWD
 	    if [ "$PASSWD" == "$DcpPass" ];then
 	        continue
