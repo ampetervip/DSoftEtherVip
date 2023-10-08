@@ -18,7 +18,14 @@ Dpass(){
 	        Dpass
 	    fi
 }
-Dpass
+DSetupTitle(){
+	clear
+	echo "=================================================="
+	echo "====Softether一键安装脚本  微信：15521188891====="
+	echo "=================================================="
+	echo ""
+}
+DSetupTitle
 
 #==================================================
 #设定文件服务器IP变量
@@ -39,9 +46,9 @@ DCP_STATIC="10.8.0.2"
 IPWAN=$(curl ifconfig.io)
 SERVER_IP=$IPWAN
 #VPN密码
-SERVER_PASSWORD="51529502"
+SERVER_PASSWORD="xiaojie"
 #IPSec共享密钥
-SHARED_KEY="51529502"
+SHARED_KEY="xiaojie"
 USER="pi"
 
 #可以输入使用退格
