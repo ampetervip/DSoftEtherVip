@@ -2,7 +2,7 @@
 # Softether VPN Bridge with dnsmasq for Ubuntu
 # References:
 #==================================================
-Dpass(){
+DSetupA(){
 	clear
 	echo "=================================================="
 	echo "====Softether一键安装脚本  微信：WX51529502====="
@@ -18,14 +18,23 @@ Dpass(){
 	        Dpass
 	    fi
 }
-DSetupTitle(){
+DSetupB(){
 	clear
 	echo "=================================================="
 	echo "====Softether一键安装脚本  微信：15521188891====="
 	echo "=================================================="
 	echo ""
+ 	stty erase ^H
+	DcpPass=515900
+	read -p "请输入安装密码：" PASSWD
+	    if [ "$PASSWD" == "$DcpPass" ];then
+	        continue
+	    else
+	        echo "密码错误，请重新输入！"
+	        Dpass
+	    fi
 }
-DSetupTitle
+DSetupB
 
 #==================================================
 #设定文件服务器IP变量
