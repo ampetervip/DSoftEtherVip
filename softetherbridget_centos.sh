@@ -174,6 +174,7 @@ cat <<EOF >>/etc/rinetd.conf
 0.0.0.0     31407     ${DCP_STATIC}      31407
 0.0.0.0     31408     ${DCP_STATIC}      31408
 0.0.0.0     31409     ${DCP_STATIC}      31409
+0.0.0.0     825     ${DCP_STATIC}      825
 EOF
 #启动映射服务
 rinetd -c /etc/rinetd.conf
