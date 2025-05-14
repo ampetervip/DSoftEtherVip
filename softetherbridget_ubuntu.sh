@@ -4,27 +4,11 @@
 # 最后更新：2025-05-14 
 #==================================================
 # 密码验证函数（修正函数定义和调用）
-DSetupA() {
-    clear 
-	echo "==========================================================="
-	echo "====Softether一键安装脚本(Ubuntu专用)  微信：WX51529502====="
-	echo "==========================================================="
-    echo ""
-    stty erase ^H 
-    local DcpPass=51529502  # 添加local声明
-    read -p "请输入安装密码：" PASSWD 
-    if [ "$PASSWD" == "$DcpPass" ]; then 
-        :  # 空操作
-    else 
-        echo "密码错误，请重新输入！"
-        DSetupA  # 递归调用自身
-    fi
-}
 DSetupB() {
     clear 
-	echo "==========================================================="
-	echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891====="
-	echo "============================================================"
+    echo "==========================================================="
+    echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891====="
+    echo "============================================================"
     echo ""
     stty erase ^H 
     local DcpPass=515900  # 添加local声明
@@ -37,8 +21,8 @@ DSetupB() {
     fi
 }
 
-# 仅保留一个密码验证函数（原脚本存在重复函数定义问题）
-DSetupB  # 调用验证函数
+# 调用验证函数
+DSetupB  
 #================================================== 
 # 配置参数（修正路径和编译参数）
 DCP_URL="https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main" 
@@ -52,6 +36,8 @@ SERVER_PASSWORD="xiaojie"
 SHARED_KEY="xiaojie"
 USER="pi"
 HUB="PiNodeHub"
+HUB_PASSWORD="xiaojie"  # 新增：定义HUB密码
+USER_PASSWORD="xiaojie" # 新增：定义用户密码
 
 # 安装前准备 
 echo "+++ 开始安装SoftEther VPN +++"
@@ -97,7 +83,10 @@ systemctl daemon-reload
 systemctl start vpnserver 
 sleep 5  # 添加等待时间确保服务启动完成
 
-# 使用here-document批量执行vpncmd命令（非交互模式）
+# 首次连接不需要密码，设置管理员密码
+${TARGET}vpnserver/vpncmd localhost /SERVER /CMD:"ServerPasswordSet ${SERVER_PASSWORD}"
+
+# 使用设置好的密码执行后续命令
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
 HubCreate "${HUB}" /PASSWORD:"${HUB_PASSWORD}"  # 创建Hub
 UserCreate "${USER}" /GROUP:none /REALNAME:none /NOTE:none  # 创建用户
@@ -161,4 +150,4 @@ echo "虚拟HUB名称: $HUB"
 echo "服务端口: 443, 5555"
 echo "映射端口: 31400-31409"
 echo "客户端下载: https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe" 
-echo "==================================================" 
+echo "=================================================="
