@@ -1,12 +1,12 @@
 ————————————————————————————————————————
 
-Softether Vpn----一键安装脚本(默认)
+Softether Vpn----一键安装脚本(Centos版本)
 
 bash -c "$(wget -O- https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main/softetherbridget_centos.sh)"
 
-Softether Vpn----一键安装脚本(其它)
+Softether Vpn----一键安装脚本(Ubuntu版本)
 
-bash -c "$(wget -O- https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main/st_other.sh)"
+bash -c "$(wget -O- https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main/softetherbridget_ubuntu.sh)"
    
 Softether Vpn----Centos一键安装脚本短网址版(默认)
 
