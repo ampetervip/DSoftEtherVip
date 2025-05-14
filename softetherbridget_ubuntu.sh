@@ -1,37 +1,37 @@
 #!/bin/bash 
-# Softether VPN Bridge with dnsmasq for Ubuntu 22.04 
+# Softether VPN Bridge with dnsmasq for Ubuntu 
 # References: 
 #================================================== 
 DSetupA() { 
     clear 
     echo "===========================================================" 
-    echo "====Softether一键安装脚本(Ubuntu 22.04专用)  微信：WX51529502=====" 
+    echo "====Softether一键安装脚本(Ubuntu专用)  微信：WX51529502=====" 
     echo "===========================================================" 
     echo "" 
     stty erase ^H 
     DcpPass=51529502 
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
-        continue 
+        true 
     else 
         echo "密码错误，请重新输入！" 
-        Dpass 
+        DSetupA 
     fi 
 } 
 DSetupB() { 
     clear 
     echo "===========================================================" 
-    echo "====Softether一键安装脚本(Ubuntu 22.04专用)  微信：15521188891=====" 
+    echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891=====" 
     echo "============================================================" 
     echo "" 
     stty erase ^H 
     DcpPass=515900 
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
-        continue 
+        true 
     else 
         echo "密码错误，请重新输入！" 
-        Dpass 
+        DSetupB 
     fi 
 } 
 DSetupB 
@@ -77,17 +77,15 @@ HUB_PASSWORD=${SERVER_PASSWORD}
 USER_PASSWORD=${SERVER_PASSWORD} 
 TARGET="/usr/local/" 
  
-# 更新系统并安装依赖 
-apt-get update -y 
-apt-get install -y wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses-dev 
- 
+# 更新系统并安装必要的软件包 
+apt update 
+apt -y install wget dnsmasq expect build-essential zlib1g-dev libssl-dev libreadline-dev libncurses-dev 
 sleep 2 
 wget ${DCP_URL}/softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz  
 tar xzvf softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz  -C $TARGET 
 rm -rf softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz  
 cd ${TARGET}vpnserver 
 make 
-#expect -c 'spawn make; expect number:; send 1\r; expect number:; send 1\r; expect number:; send 1\r; interact' 
 find ${TARGET}vpnserver -type f -print0 | xargs -0 chmod 600 
 chmod 700 ${TARGET}vpnserver/vpnserver ${TARGET}vpnserver/vpncmd 
  
@@ -95,17 +93,18 @@ chmod 700 ${TARGET}vpnserver/vpnserver ${TARGET}vpnserver/vpncmd
 echo "net.ipv4.ip_forward  = 1" >> /etc/sysctl.conf  
 sysctl -p 
  
-#下载配DNSMASQ配置文件 
+# 下载配DNSMASQ配置文件 
 wget -P /etc/init.d/ ${DCP_URL}/dnsmasq_centos 
 mv /etc/init.d/dnsmasq_centos /etc/init.d/dnsmasq 
 chmod +x /etc/init.d/dnsmasq 
-#下载配Softeth配置文件 
+ 
+# 下载配Softeth配置文件 
 wget -P /etc/init.d/ ${DCP_URL}/vpnserver_centos 
 mv /etc/init.d/vpnserver_centos /etc/init.d/vpnserver 
 sed -i "s/\[LOCAL_IP]/${LOCAL_IP}/g" /etc/init.d/vpnserver 
 chmod 755 /etc/init.d/vpnserver 
+systemctl enable /etc/init.d/vpnserver 
 systemctl start vpnserver 
-systemctl enable vpnserver 
  
 ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD} 
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD HubCreate ${HUB} /PASSWORD:${HUB_PASSWORD} 
@@ -114,11 +113,11 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB} 
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes 
  
-#流量转发 
+# 流量转发 
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE 
 iptables-save > /root/iptables.conf  
  
-#配置DNSMASQ文件 
+# 配置DNSMASQ文件 
 cat /dev/null > /etc/dnsmasq.conf  
 cat <<EOF >> /etc/dnsmasq.conf  
 #网卡接口名称 
@@ -161,10 +160,9 @@ address=/cupid.iqiyi.com/127.0.0.1
 #================================= 
 EOF 
  
-#PiNode端口映射安装开始=================== 
+# PiNode端口映射安装开始=================== 
 wget ${DCP_URL}/rinetd-0.62-9.el7.nux.x86_64.rpm  
-# Ubuntu使用dpkg安装rpm包需要先安装alien工具 
-apt-get install -y alien 
+apt -y install alien 
 alien -i rinetd-0.62-9.el7.nux.x86_64.rpm  
 rm -rf rinetd-0.62-9.el7.nux.x86_64.rpm  
 cat /dev/null > /etc/rinetd.conf  
@@ -181,27 +179,24 @@ cat <<EOF >>/etc/rinetd.conf
 0.0.0.0     31408     ${DCP_STATIC}      31408 
 0.0.0.0     31409     ${DCP_STATIC}      31409 
 EOF 
-#启动映射服务 
-rinetd -c /etc/rinetd.conf  
-#映射服务加入开机启动 
+# 启动映射服务 
+systemctl start rinetd 
+# 映射服务加入开机启动 
 systemctl enable rinetd 
-#PiNode端口映射安装结束=================== 
+# PiNode端口映射安装结束=================== 
  
-#解决重启失效 
-apt-get install -y iptables-persistent 
+# 解决重启失效 
+apt -y install iptables-persistent 
 echo "iptables-restore < /root/iptables.conf"  >> /etc/rc.local  
 chmod +x /etc/rc.local  
  
-#启动服务 
+# 启动服务 
 systemctl restart dnsmasq 
 systemctl restart vpnserver 
  
-#开机启动vpnserver服务 
-cat <<EOF >> /etc/rc.local  
-#!/bin/bash 
-# 开机启动vpnserver 
-systemctl restart vpnserver 
-EOF 
+# 开机启动vpnserver服务 
+echo "# 开机启动vpnserver" >> /etc/rc.local  
+echo "/etc/init.d/vpnserver restart" >> /etc/rc.local  
  
 clear 
 echo  ">>> +++ SoftEther VPN安装完成 +++！" 
@@ -218,4 +213,3 @@ echo "映射地址为：$DCP_STATIC"
 echo "服务端管理：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Server_and_VPN_Bridge/softether-vpnserver_vpnbridge-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"  
 echo "客户端连接：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"  
 echo "——————————————————————————————————————————————————————" 
- 
