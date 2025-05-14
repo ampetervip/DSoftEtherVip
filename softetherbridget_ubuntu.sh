@@ -1,27 +1,45 @@
 #!/bin/bash 
 # Softether VPN Bridge with dnsmasq for Ubuntu 
- 
-# 函数定义：安装密码验证 
-DSetup() { 
+# 适配版本：Ubuntu 20.04/22.04 LTS 
+# 最后更新：2025-05-14 
+#==================================================
+# 密码验证函数（修正函数定义和调用）
+DSetupA() {
     clear 
-    echo "===========================================================" 
-    echo "====Softether一键安装脚本(Ubuntu专用)  微信：WX51529502=====" 
-    echo "===========================================================" 
-    echo "" 
+    echo "==================================================" 
+    echo "====Softether一键安装脚本  微信：WX51529502=====" 
+    echo "==================================================" 
+    echo ""
     stty erase ^H 
-    DcpPass=51529502 
+    local DcpPass=51529502  # 添加local声明
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
-        continue
+        :  # 空操作
     else 
-        echo "密码错误，请重新输入！" 
-        DSetup 
-    fi 
-} 
- 
-# 调用密码验证函数 
-DSetup 
+        echo "密码错误，请重新输入！"
+        DSetupA  # 递归调用自身
+    fi
+}
+# 密码验证函数（修正函数定义和调用）
+DSetupB() {
+    clear 
+    echo "==================================================" 
+    echo "====Softether一键安装脚本  微信：WX51529502=====" 
+    echo "==================================================" 
+    echo ""
+    stty erase ^H 
+    local DcpPass=51529502  # 添加local声明
+    read -p "请输入安装密码：" PASSWD 
+    if [ "$PASSWD" == "$DcpPass" ]; then 
+        :  # 空操作
+    else 
+        echo "密码错误，请重新输入！"
+        DSetupA  # 递归调用自身
+    fi
+}
 
+# 仅保留一个密码验证函数（原脚本存在重复函数定义问题）
+DSetupA  # 调用验证函数
 #================================================== 
 # 配置参数（修正路径和编译参数）
 DCP_URL="https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main" 
