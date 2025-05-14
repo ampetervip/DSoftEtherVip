@@ -2,39 +2,39 @@
 # Softether VPN Bridge with dnsmasq for Ubuntu 
 # References: 
 #================================================== 
-DSetupA() { 
-    clear 
-    echo "===========================================================" 
-    echo "====Softether一键安装脚本(Ubuntu专用)  微信：WX51529502=====" 
-    echo "===========================================================" 
-    echo "" 
-    stty erase ^H 
-    DcpPass=51529502 
-    read -p "请输入安装密码：" PASSWD 
-    if [ "$PASSWD" == "$DcpPass" ]; then 
-        continue
-    else 
-        echo "密码错误，请重新输入！" 
-        DSetupA 
-    fi 
-} 
-DSetupB() { 
-    clear 
-    echo "===========================================================" 
-    echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891=====" 
-    echo "============================================================" 
-    echo "" 
-    stty erase ^H 
-    DcpPass=515900 
-    read -p "请输入安装密码：" PASSWD 
-    if [ "$PASSWD" == "$DcpPass" ]; then 
-        continue 
-    else 
-        echo "密码错误，请重新输入！" 
-        DSetupB 
-    fi 
-} 
-DSetupB 
+DSetupA(){
+	clear
+	echo "==========================================================="
+	echo "====Softether一键安装脚本(Centos专用)  微信：WX51529502====="
+	echo "==========================================================="
+	echo ""
+	stty erase ^H
+	DcpPass=51529502
+	read -p "请输入安装密码：" PASSWD
+	    if [ "$PASSWD" == "$DcpPass" ];then
+	        continue
+	    else
+	        echo "密码错误，请重新输入！"
+	        Dpass
+	    fi
+}
+DSetupB(){
+	clear
+	echo "==========================================================="
+	echo "====Softether一键安装脚本(Centos专用)  微信：15521188891====="
+	echo "============================================================"
+	echo ""
+ 	stty erase ^H
+	DcpPass=515900
+	read -p "请输入安装密码：" PASSWD
+	    if [ "$PASSWD" == "$DcpPass" ];then
+	        continue
+	    else
+	        echo "密码错误，请重新输入！"
+	        Dpass
+	    fi
+}
+DSetupB
  
 #================================================== 
 #设定文件服务器IP变量 
