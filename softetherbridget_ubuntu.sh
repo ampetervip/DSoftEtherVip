@@ -4,39 +4,39 @@
 # 最后更新：2025-05-14 
 #==================================================
 # 密码验证函数（修正函数定义和调用）
-DSetupA() {
-    clear 
-    echo "==================================================" 
-    echo "====Softether一键安装脚本  微信：WX51529502=====" 
-    echo "==================================================" 
-    echo ""
-    stty erase ^H 
-    local DcpPass=51529502  # 添加local声明
-    read -p "请输入安装密码：" PASSWD 
-    if [ "$PASSWD" == "$DcpPass" ]; then 
-        :  # 空操作
-    else 
-        echo "密码错误，请重新输入！"
-        DSetupA  # 递归调用自身
-    fi
+DSetupA(){
+	clear
+	echo "==========================================================="
+	echo "====Softether一键安装脚本(Ubuntu专用)  微信：WX51529502====="
+	echo "==========================================================="
+	echo ""
+	stty erase ^H
+	DcpPass=51529502
+	read -p "请输入安装密码：" PASSWD
+	    if [ "$PASSWD" == "$DcpPass" ];then
+	        continue
+	    else
+	        echo "密码错误，请重新输入！"
+	        Dpass
+	    fi
 }
-# 密码验证函数（修正函数定义和调用）
-DSetupB() {
-    clear 
-    echo "==================================================" 
-    echo "====Softether一键安装脚本  微信：WX51529502=====" 
-    echo "==================================================" 
-    echo ""
-    stty erase ^H 
-    local DcpPass=51529502  # 添加local声明
-    read -p "请输入安装密码：" PASSWD 
-    if [ "$PASSWD" == "$DcpPass" ]; then 
-        :  # 空操作
-    else 
-        echo "密码错误，请重新输入！"
-        DSetupA  # 递归调用自身
-    fi
+DSetupB(){
+	clear
+	echo "==========================================================="
+	echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891====="
+	echo "============================================================"
+	echo ""
+ 	stty erase ^H
+	DcpPass=515900
+	read -p "请输入安装密码：" PASSWD
+	    if [ "$PASSWD" == "$DcpPass" ];then
+	        continue
+	    else
+	        echo "密码错误，请重新输入！"
+	        Dpass
+	    fi
 }
+DSetupB
 
 # 仅保留一个密码验证函数（原脚本存在重复函数定义问题）
 DSetupA  # 调用验证函数
