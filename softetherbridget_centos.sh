@@ -159,46 +159,26 @@ address=/cupid.iqiyi.com/127.0.0.1
 EOF
 
 #PiNode端口映射安装开始===================
-echo -e ">>> PiNode端口映射安装 ... "
-
-# 更新软件包列表
-apt update
-
-# 安装 rinetd
-if apt install -y rinetd; then
-    echo "rinetd 安装成功"
-else
-    echo "rinetd 安装失败，请检查网络或系统状态"
-    exit 1
-fi
-
-# 配置 rinetd.conf 文件
-cat >> /etc/rinetd.conf <<EOF
+wget ${DCP_URL}/rinetd-0.62-9.el7.nux.x86_64.rpm
+rpm -ivh rinetd-0.62-9.el7.nux.x86_64.rpm
+cat /dev/null> /etc/rinetd.conf
+cat <<EOF >>/etc/rinetd.conf
 # Pi-Node节点端口转发
-0.0.0.0     31400       10.8.0.2      31400
-0.0.0.0     31401       10.8.0.2      31401
-0.0.0.0     31402       10.8.0.2      31402
-0.0.0.0     31403       10.8.0.2      31403
-0.0.0.0     31404       10.8.0.2      31404
-0.0.0.0     31405       10.8.0.2      31405
-0.0.0.0     31406       10.8.0.2      31406
-0.0.0.0     31407       10.8.0.2      31407
-0.0.0.0     31408       10.8.0.2      31408
-0.0.0.0     31409       10.8.0.2      31409
-0.0.0.0     825         10.8.0.2      825
+0.0.0.0     31400     ${DCP_STATIC}      31400
+0.0.0.0     31401     ${DCP_STATIC}      31401
+0.0.0.0     31402     ${DCP_STATIC}      31402
+0.0.0.0     31403     ${DCP_STATIC}      31403
+0.0.0.0     31404     ${DCP_STATIC}      31404
+0.0.0.0     31405     ${DCP_STATIC}      31405
+0.0.0.0     31406     ${DCP_STATIC}      31406
+0.0.0.0     31407     ${DCP_STATIC}      31407
+0.0.0.0     31408     ${DCP_STATIC}      31408
+0.0.0.0     31409     ${DCP_STATIC}      31409
 EOF
-
-# 启动 rinetd 服务并设置开机自启
-if rinetd -c /etc/rinetd.conf; then
-    echo "rinetd 配置并启动成功"
-    if systemctl enable rinetd; then
-        echo "rinetd 设置开机自启成功"
-    else
-        echo "rinetd 设置开机自启失败"
-    fi
-else
-    echo "rinetd 配置或启动失败，请检查配置文件"
-fi
+#启动映射服务
+rinetd -c /etc/rinetd.conf
+#映射服务加入开机启动
+systemctl enable rinetd
 #PiNode端口映射安装结束===================
 
 
