@@ -12,7 +12,7 @@ DSetupA() {
     DcpPass=51529502 
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
-        true 
+        break 
     else 
         echo "密码错误，请重新输入！" 
         DSetupA 
@@ -28,7 +28,7 @@ DSetupB() {
     DcpPass=515900 
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
-        true 
+        break 
     else 
         echo "密码错误，请重新输入！" 
         DSetupB 
