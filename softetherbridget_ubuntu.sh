@@ -27,7 +27,7 @@ DSetupB() {
 	echo "============================================================"
     echo ""
     stty erase ^H 
-    local DcpPass=51529502  # 添加local声明
+    local DcpPass=515900  # 添加local声明
     read -p "请输入安装密码：" PASSWD 
     if [ "$PASSWD" == "$DcpPass" ]; then 
         :  # 空操作
