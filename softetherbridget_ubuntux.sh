@@ -1,5 +1,5 @@
 #!/bin/bash
-# Softether VPN Bridge with dnsmasq for Ubuntu 24.04
+# Softether VPN Bridge for Ubuntu 24.04
 # References: https://www.softether.org/
 
 #==================================================
@@ -15,10 +15,10 @@ USER_PASSWORD=${SERVER_PASSWORD}
 TARGET="/usr/local/"
 
 # 网络配置
-LOCAL_IP="10.8.0.1"
-LOCAL_RANGE="10.8.0.2,10.8.0.2"
+LOCAL_IP="10.0.8.1"
+LOCAL_RANGE="10.0.8.2,10.0.8.2"
 DCP_DNS="8.8.8.8"
-DCP_STATIC="10.8.0.2"
+DCP_STATIC="10.0.8.2"
 
 echo "开始安装 SoftEther VPN Server..."
 
@@ -94,7 +94,13 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Br
 # 配置SecureNAT和DHCP设置
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:10.0.8.2 /END:10.0.8.2 /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+
+# 验证tap_soft接口是否创建成功
+if ! ip link show tap_soft >/dev/null 2>&1; then
+    echo "错误：tap_soft接口创建失败"
+    exit 1
+fi
 
 # 配置网络转发规则和IPv4优先级
 echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
@@ -118,23 +124,6 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Se
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxBufferSize 4294967295
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxSession ${HUB} 50000
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxConnection ${HUB} 50000
-
-# 配置DNSMASQ
-cat > /etc/dnsmasq.conf << EOF
-interface=tap_soft
-dhcp-range=tap_soft,${DCP_STATIC},${DCP_STATIC},255.255.255.0,12h
-dhcp-option=tap_soft,3,${LOCAL_IP}
-dhcp-option=tap_soft,6,${DCP_DNS}
-listen-address=${LOCAL_IP}
-bind-interfaces
-no-hosts
-no-resolv
-no-poll
-server=8.8.8.8
-server=8.8.4.4
-cache-size=1000
-no-negcache
-EOF
 
 # 配置端口映射
 cat > /etc/rinetd.conf << EOF
@@ -171,11 +160,15 @@ fi
 # 配置SecureNAT和DHCP设置
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:10.0.8.2 /END:10.0.8.2 /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
 
-# 移除dnsmasq服务启动
-# 启动其他服务
-# systemctl enable --now dnsmasq
+# 验证tap_soft接口是否创建成功
+if ! ip link show tap_soft >/dev/null 2>&1; then
+    echo "错误：tap_soft接口创建失败"
+    exit 1
+fi
+
+# 启动rinetd服务
 systemctl enable --now rinetd
 
 # 添加iptables规则允许端口转发
@@ -206,8 +199,7 @@ if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /C
     exit 1
 fi
 
-# 启动其他服务
-systemctl enable --now dnsmasq
+# 启动rinetd服务
 systemctl enable --now rinetd
 
 echo ">>> +++ SoftEther VPN安装完成 +++！"
