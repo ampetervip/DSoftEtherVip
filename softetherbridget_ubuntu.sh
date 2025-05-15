@@ -176,7 +176,6 @@ systemctl enable --now rinetd
 systemctl restart dnsmasq 
 
 # 完成提示 
-clear 
 echo "==================================================" 
 echo "SoftEther VPN 安装完成"
 echo "公网IP: $IPWAN"
