@@ -19,7 +19,7 @@ DSetup() {
         :  # 空操作
     else 
         echo "密码错误，请重新输入！"
-        DSetupB  # 递归调用自身
+        DSetup  # 递归调用自身
     fi
 }
 
@@ -59,7 +59,7 @@ EOF
 # 更新系统并安装依赖
 echo "开始安装依赖..."
 apt update && apt upgrade -y
-DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget expect zlib1g-dev libssl-dev
+DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget expect zlib1g-dev libssl-dev net-tools rinetd
 
 # 下载并安装最新版本的SoftEther VPN Server
 echo "开始下载并安装最新版本的SoftEther VPN Server..."
@@ -149,10 +149,17 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${
 # 配置网络转发规则和IPv4优先级
 echo "开始配置网络转发规则和IPv4优先级..."
 echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.0.8.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
 iptables -A FORWARD -i tap_soft -j ACCEPT
 iptables -A FORWARD -o tap_soft -j ACCEPT
 netfilter-persistent save
+
+# 验证tap_soft接口状态
+echo "验证tap_soft接口状态..."
+if ! ip link show tap_soft > /dev/null 2>&1; then
+    echo "错误：tap_soft接口未创建成功"
+    exit 1
+fi
 
 # 系统优化配置
 echo "开始系统优化配置..."
