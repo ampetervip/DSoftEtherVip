@@ -59,7 +59,7 @@ DSetup() {
     local DcpPass=515900
     read -p "请输入安装密码：" PASSWD
     if [ "$PASSWD" == "$DcpPass" ]; then
-        return 0
+        :
     else
         echo "密码错误，请重新输入！"
         DSetup
@@ -308,6 +308,7 @@ MainMenu() {
             InstallVPN
             ;;
         2)
+            DSetup
             Uninstall
             ;;
         3)
