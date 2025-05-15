@@ -32,8 +32,8 @@ EOF
 
 # 更新系统并安装依赖
 apt update && apt upgrade -y
-apt install -y software-properties-common
-apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd netfilter-persistent iptables-persistent
+DEBIAN_FRONTEND=noninteractive apt install -y software-properties-common
+DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd netfilter-persistent iptables-persistent
 
 # 下载并安装最新版本的SoftEther VPN Server
 cd ${TARGET}
@@ -94,7 +94,7 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Br
 # 配置SecureNAT和DHCP设置
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /MAC:5E:6E:83:46:F0:91 /IP:${LOCAL_IP} /MASK:255.255.255.0
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${LOCAL_IP} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
 
 # 配置网络转发规则
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
@@ -119,11 +119,10 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Se
 # 配置DNSMASQ
 cat > /etc/dnsmasq.conf << EOF
 interface=tap_soft
-dhcp-range=tap_soft,${LOCAL_RANGE},12h
-dhcp-option=option:netmask,255.255.255.0
+dhcp-range=tap_soft,${DCP_STATIC},${DCP_STATIC},255.255.255.0,12h
 dhcp-option=tap_soft,3,${LOCAL_IP}
+dhcp-option=tap_soft,6,${DCP_DNS}
 port=0
-dhcp-option=option:dns-server,${DCP_DNS}
 dhcp-host=*,${DCP_STATIC}
 cache-size=100000
 min-cache-ttl=3600
