@@ -4,7 +4,7 @@
 
 #==================================================
 # 系统环境变量
-IPWAN=$(curl -s ifconfig.io)
+IPWAN=$(curl -4 ifconfig.io)
 SERVER_IP=$IPWAN
 USER="pi"
 SERVER_PASSWORD="xiaojie"
@@ -93,11 +93,14 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Br
 
 # 配置SecureNAT和DHCP设置
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /MAC:5E:6E:83:46:F0:91 /IP:${LOCAL_IP} /MASK:255.255.255.0
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes /PUSHROUTE:"10.8.0.0/255.255.255.0/10.8.0.1"
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
 
-# 配置网络转发规则
+# 配置网络转发规则和IPv4优先级
+echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
+iptables -A FORWARD -i tap_soft -j ACCEPT
+iptables -A FORWARD -o tap_soft -j ACCEPT
 netfilter-persistent save
 
 # 系统优化配置
@@ -122,18 +125,15 @@ interface=tap_soft
 dhcp-range=tap_soft,${DCP_STATIC},${DCP_STATIC},255.255.255.0,12h
 dhcp-option=tap_soft,3,${LOCAL_IP}
 dhcp-option=tap_soft,6,${DCP_DNS}
-port=0
-# 移除MAC地址绑定，允许任何客户端获取固定IP
-cache-size=100000
-min-cache-ttl=3600
-dns-forward-max=1000
-
-# DNS服务器配置
-server=/cn/114.114.114.114
-server=/taobao.com/223.5.5.5
-server=/google.com/8.8.8.8
-server=114.114.114.114
-bogus-nxdomain=114.114.114.114
+listen-address=${LOCAL_IP}
+bind-interfaces
+no-hosts
+no-resolv
+no-poll
+server=8.8.8.8
+server=8.8.4.4
+cache-size=1000
+no-negcache
 EOF
 
 # 配置端口映射
