@@ -1,7 +1,7 @@
 #!/bin/bash 
 # Softether VPN Bridge with dnsmasq for Ubuntu 
 # 适配版本：Ubuntu 20.04/22.04 LTS 
-# 最后更新：2025-05-14 
+# 最后更新：2025-05-15 
 #==================================================
 # 密码验证函数（修正函数定义和调用）
 DSetupB() {
@@ -89,6 +89,7 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD:"ServerPasswordSet ${SERVER_PAS
 # 使用设置好的密码执行后续命令
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
 HubCreate "${HUB}" /PASSWORD:"${HUB_PASSWORD}"  # 创建Hub
+Hub "${HUB}"
 UserCreate "${USER}" /GROUP:none /REALNAME:none /NOTE:none  # 创建用户
 UserPasswordSet "${USER}" /PASSWORD:"${USER_PASSWORD}"  # 设置用户密码
 IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:"${SHARED_KEY}" /DEFAULTHUB:"${HUB}"  # 启用IPsec协议
@@ -219,12 +220,16 @@ systemctl enable --now vpnserver
 systemctl enable --now rinetd 
 systemctl restart dnsmasq 
 
+# 验证用户创建
+echo "验证用户创建..."
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:Hub "${HUB}" /CMD:UserList
+
 # 完成提示 
 echo "==================================================" 
 echo "SoftEther VPN 安装完成"
 echo "公网IP: $IPWAN"
 echo "用户名: $USER"
-echo "密码: $SERVER_PASSWORD"
+echo "密码: $USER_PASSWORD"
 echo "IPSec共享密钥: $SHARED_KEY"
 echo "虚拟HUB名称: $HUB"
 echo "服务端口: 443, 5555"
