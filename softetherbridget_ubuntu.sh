@@ -186,11 +186,7 @@ EOF
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes 
 
     # 配置网络转发规则和IPv4优先级
-    echo "开始配置网络转发规则和IPv4优先级..."
-    echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
     iptables -t nat -A POSTROUTING -s 10.0.8.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
-    iptables -A FORWARD -i tap_soft -j ACCEPT
-    iptables -A FORWARD -o tap_soft -j ACCEPT
     netfilter-persistent save
 
     # 验证tap_soft接口状态
@@ -258,14 +254,6 @@ EOF
     # 配置rinetd服务开机自启动
     echo "开始配置rinetd服务开机自启动..."
     systemctl enable --now rinetd
-
-    # 添加iptables规则允许端口转发
-    echo "开始添加iptables规则允许端口转发..."
-    for port in {31400..31409}; do
-        iptables -A INPUT -p tcp --dport $port -j ACCEPT
-        iptables -A FORWARD -p tcp --dport $port -j ACCEPT
-    done
-    netfilter-persistent save
 
     # 验证HUB是否创建成功
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] 开始验证HUB是否创建成功..."
