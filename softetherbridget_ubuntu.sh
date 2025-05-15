@@ -1,9 +1,11 @@
-#!/bin/bash 
-# Softether VPN Bridge with dnsmasq for Ubuntu 
-# 适配版本：Ubuntu 20.04/22.04 LTS 
-# 最后更新：2025-05-15 
+#!/bin/bash
+# Softether VPN Bridge for Ubuntu 24.04
+# 作者：DengCaiPing
+# 微信：51529502
+# 时间：2025-05-15
+# 版本：v1.0
 #==================================================
-# 密码验证函数（修正函数定义和调用）
+# 密码验证函数
 DSetupB() {
     clear 
     echo "==========================================================="
@@ -23,245 +25,213 @@ DSetupB() {
 
 # 调用验证函数
 DSetupB  
-#================================================== 
-# 配置参数（修正路径和编译参数）
-DCP_URL="https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main" 
-LOCAL_IP="10.8.0.1"
-LOCAL_RANGE="10.8.0.2-254"  # 正确的DHCP范围格式
-DCP_DNS="8.8.8.8"
-TARGET="/usr/local/"
-IPWAN=$(curl -s ifconfig.io) 
-SERVER_IP=$IPWAN 
+#==================================================
+# 系统环境变量
+IPWAN=$(curl -4 ifconfig.io)
+SERVER_IP=$IPWAN
+USER="pi"
 SERVER_PASSWORD="xiaojie"
 SHARED_KEY="xiaojie"
-USER="pi"
 HUB="PiNodeHub"
-HUB_PASSWORD="xiaojie"  # 新增：定义HUB密码
-USER_PASSWORD="xiaojie" # 新增：定义用户密码
+HUB_PASSWORD=${SERVER_PASSWORD}
+USER_PASSWORD=${SERVER_PASSWORD}
+TARGET="/usr/local/"
 
-# 安装前准备（添加noninteractive选项）
-echo "+++ 开始安装SoftEther VPN +++"
-DEBIAN_FRONTEND=noninteractive apt-get update 
-DEBIAN_FRONTEND=noninteractive apt-get install -y wget dnsmasq expect build-essential libreadline-dev libssl-dev libncurses-dev iptables-persistent netfilter-persistent 
+# 网络配置
+LOCAL_IP="10.0.8.1"
+DCP_DNS="8.8.8.8"
+DCP_STATIC="10.0.8.2"
+# 确保DHCP只分配固定IP
+DHCP_MIN="10.0.8.2"
+DHCP_MAX="10.0.8.2"
 
-# 安装SoftEther（修正编译步骤）
-wget ${DCP_URL}/softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz  
-tar xzvf softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz -C $TARGET  # 修正空格问题
-cd ${TARGET}vpnserver 
-make  # 移除错误的目标参数，直接编译（SoftEther标准编译命令）
-# 旧版本可能需要接受许可，但新版本通过make直接编译
+echo "开始安装 SoftEther VPN Server..."
 
-# 权限设置（确保文件存在后再操作）
-if [ -f ${TARGET}vpnserver/vpnserver ] && [ -f ${TARGET}vpnserver/vpncmd ]; then
-    find ${TARGET}vpnserver -type f -print0 | xargs -0 chmod 600 
-    chmod 700 ${TARGET}vpnserver/vpnserver ${TARGET}vpnserver/vpncmd 
-else
-    echo "错误：vpnserver/vpncmd文件未生成，请检查编译步骤"
+# 配置软件源
+echo "开始配置软件源..."
+cat > /etc/apt/sources.list << EOF
+deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse
+EOF
+
+# 更新系统并安装依赖
+echo "开始安装依赖..."
+apt update && apt upgrade -y
+DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget expect zlib1g-dev libssl-dev
+
+# 下载并安装最新版本的SoftEther VPN Server
+echo "开始下载并安装最新版本的SoftEther VPN Server..."
+cd ${TARGET}
+wget https://github.com/SoftEtherVPN/SoftEtherVPN_Stable/releases/download/v4.42-9798-rtm/softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz
+tar xzf softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz -C ${TARGET}
+rm -f softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz
+
+# 编译安装
+echo "开始编译安装..."
+cd ${TARGET}vpnserver
+cat > build.expect << EOF
+#!/usr/bin/expect
+set timeout 300
+spawn make
+expect "number:"
+send "1\r"
+expect "number:"
+send "1\r"
+expect "number:"
+send "1\r"
+expect eof
+EOF
+
+chmod +x build.expect
+./build.expect
+
+# 设置权限
+echo "开始设置权限..."
+chmod 600 ${TARGET}vpnserver/*
+chmod 700 ${TARGET}vpnserver/vpnserver ${TARGET}vpnserver/vpncmd
+
+# 创建systemd服务
+echo "开始创建systemd服务..."
+cat > /etc/systemd/system/vpnserver.service << EOF
+[Unit]
+Description=SoftEther VPN Server
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=${TARGET}vpnserver/vpnserver start
+ExecStop=${TARGET}vpnserver/vpnserver stop
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启用IP转发
+echo "开始配置IP转发..."
+echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/ipv4_forwarding.conf
+sysctl --system
+
+# 配置VPN服务器
+echo "开始配置VPN服务器..."
+${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD}
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD HubCreate ${HUB} /PASSWORD:${HUB_PASSWORD}
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserCreate ${USER} /GROUP:none /REALNAME:none /NOTE:none
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserPasswordSet ${USER} /PASSWORD:${USER_PASSWORD}
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB}
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes
+
+# 配置SecureNAT和DHCP设置
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+
+# 配置网络转发规则和IPv4优先级
+echo "开始配置网络转发规则和IPv4优先级..."
+echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
+iptables -A FORWARD -i tap_soft -j ACCEPT
+iptables -A FORWARD -o tap_soft -j ACCEPT
+netfilter-persistent save
+
+# 系统优化配置
+echo "开始系统优化配置..."
+echo "* soft nofile 1048576" >> /etc/security/limits.conf
+echo "* hard nofile 1048576" >> /etc/security/limits.conf
+echo "net.core.somaxconn = 65535" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_max_syn_backlog = 65535" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_max_tw_buckets = 1440000" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_fin_timeout = 15" >> /etc/sysctl.conf
+sysctl -p
+
+# VPN服务器性能优化
+echo "开始VPN服务器性能优化..."
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxSession 100000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxConnection 100000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxBufferSize 4294967295
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxSession ${HUB} 50000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxConnection ${HUB} 50000
+
+# 配置端口映射
+echo "开始配置端口映射..."
+cat > /etc/rinetd.conf << EOF
+# Pi-Node节点端口转发
+# 格式: 外部IP 外部端口 内部IP 内部端口
+0.0.0.0 31400 ${DCP_STATIC} 31400
+0.0.0.0 31401 ${DCP_STATIC} 31401
+0.0.0.0 31402 ${DCP_STATIC} 31402
+0.0.0.0 31403 ${DCP_STATIC} 31403
+0.0.0.0 31404 ${DCP_STATIC} 31404
+0.0.0.0 31405 ${DCP_STATIC} 31405
+0.0.0.0 31406 ${DCP_STATIC} 31406
+0.0.0.0 31407 ${DCP_STATIC} 31407
+0.0.0.0 31408 ${DCP_STATIC} 31408
+0.0.0.0 31409 ${DCP_STATIC} 31409
+EOF
+
+# 启动并设置开机自启动服务
+echo "开始启动并设置开机自启动服务..."
+systemctl daemon-reload
+systemctl enable vpnserver
+systemctl start vpnserver
+
+# 等待VPN服务器完全启动
+echo "等待VPN服务器完全启动..."
+sleep 10
+
+
+# 启动rinetd服务并检查状态
+echo "开始启动rinetd服务并检查状态..."
+systemctl restart rinetd
+sleep 2
+if ! systemctl is-active --quiet rinetd; then
+    echo "错误：rinetd服务启动失败"
+    systemctl status rinetd
     exit 1
 fi
 
-# 网络配置 
-echo "net.ipv4.ip_forward = 1" >>/etc/sysctl.conf  # 移除多余空格
-sysctl -p 
+# 配置rinetd服务开机自启动
+echo "开始配置rinetd服务开机自启动..."
+systemctl enable --now rinetd
 
-# 服务管理文件（修正here-document格式）
-cat > /etc/systemd/system/vpnserver.service <<EOF  # 确保EOF顶格
-[Unit]
-Description=SoftEther VPN Server 
-After=network.target  
-[Service]
-Type=forking 
-ExecStart=${TARGET}vpnserver/vpnserver start 
-ExecStop=${TARGET}vpnserver/vpnserver stop 
-Restart=on-abort 
-[Install]
-WantedBy=multi-user.target  
-EOF
+# 添加iptables规则允许端口转发
+echo "开始添加iptables规则允许端口转发..."
+for port in {31400..31409}; do
+    iptables -A INPUT -p tcp --dport $port -j ACCEPT
+    iptables -A FORWARD -p tcp --dport $port -j ACCEPT
+done
+netfilter-persistent save
 
-# 初始化VPN配置（确保服务已启动）
-systemctl daemon-reload 
-systemctl start vpnserver 
-sleep 5  # 添加等待时间确保服务启动完成
 
-# 首次连接不需要密码，设置管理员密码
-${TARGET}vpnserver/vpncmd localhost /SERVER /CMD:"ServerPasswordSet ${SERVER_PASSWORD}"
-
-# 使用设置好的密码执行后续命令
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
-HubCreate "${HUB}" /PASSWORD:"${HUB_PASSWORD}"  # 创建Hub
-Hub "${HUB}"
-UserCreate "${USER}" /GROUP:none /REALNAME:none /NOTE:none  # 创建用户
-UserPasswordSet "${USER}" /PASSWORD:"${USER_PASSWORD}"  # 设置用户密码
-IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:"${SHARED_KEY}" /DEFAULTHUB:"${HUB}"  # 启用IPsec协议
-BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes  # 创建TAP网桥
-Exit  # 退出管理工具
-EOF
-
-# 防火墙规则部分（新增 SSH 允许规则）
-iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-iptables -A OUTPUT -p tcp --sport 22 -j ACCEPT
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE 
-netfilter-persistent save 
-
-# 服务启动等待时间调整
-systemctl start vpnserver
-sleep 10  # 增加等待时间
-
-# DNSMASQ配置修正
-echo "配置dnsmasq服务..."
-
-# 停止并禁用systemd-resolved以避免端口冲突
-systemctl stop systemd-resolved
-systemctl disable systemd-resolved
-
-# 备份resolv.conf并创建新的
-mv /etc/resolv.conf /etc/resolv.conf.backup
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-
-# 确定TAP设备名称
-TAP_DEVICE=$(ip link | grep -o 'tap_soft[^:]*' | head -1)
-if [ -z "$TAP_DEVICE" ]; then
-    echo "警告：未找到tap_soft设备，尝试手动创建..."
-    # 创建TAP设备
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:BridgeList | grep -q "tap_soft"
-    if [ $? -ne 0 ]; then
-        ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes
-    fi
-    # 再次尝试检测TAP设备
-    TAP_DEVICE=$(ip link | grep -o 'tap_soft[^:]*' | head -1)
-    if [ -z "$TAP_DEVICE" ]; then
-        echo "错误：无法创建或检测tap_soft设备"
-        TAP_DEVICE="tap_soft"  # 作为最后手段使用默认名称
-    fi
+# 验证HUB是否创建成功
+echo "开始验证HUB是否创建成功..."
+if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Hub ${HUB}; then
+    echo "错误：HUB创建失败，请检查配置"
+    exit 1
 fi
 
-echo "使用TAP设备: $TAP_DEVICE"
-
-# 配置dnsmasq（修正dhcp-range格式）
-cat > /etc/dnsmasq.conf <<EOF
-# 监听TAP接口
-interface=$TAP_DEVICE
-bind-interfaces
-
-# DHCP设置（修正为正确的dhcp-range格式）
-dhcp-range=$LOCAL_IP,$(echo $LOCAL_RANGE | cut -d- -f2),255.255.255.0,12h
-dhcp-option=3,$LOCAL_IP  # 网关
-dhcp-option=6,$DCP_DNS   # DNS服务器
-
-# DNS设置
-port=53
-cache-size=1000
-log-queries
-log-dhcp
-
-# 国内DNS
-server=/cn/114.114.114.114
-server=/taobao.com/223.5.5.5
-server=/taobaocdn.com/114.114.114.114
-
-# 国外DNS
-server=/google.com/223.5.5.5
-server=/.apple.com/223.6.6.6
-server=/google.com/8.8.8.8
-server=114.114.114.114
-bogus-nxdomain=114.114.114.114
-
-# 广告拦截
-address=/.atm.youku.com/127.0.0.1
-address=/cupid.iqiyi.com/127.0.0.1
-EOF
-
-# 确保dnsmasq使用我们的配置文件
-echo 'DNSMASQ_OPTS="-C /etc/dnsmasq.conf"' > /etc/default/dnsmasq
-
-# 创建systemd服务目录（如果不存在）
-mkdir -p /etc/systemd/system/dnsmasq.service.d
-
-# 创建一个systemd服务依赖项，确保在网络完全就绪后启动dnsmasq
-cat > /etc/systemd/system/dnsmasq.service.d/override.conf <<EOF
-[Unit]
-After=network-online.target
-Wants=network-online.target
-EOF
-
-# 重新加载systemd配置
-systemctl daemon-reload
-
-# SoftEther用户配置修正（分离Hub选择和命令执行）
-echo "配置SoftEther VPN用户..."
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
-HubCreate "${HUB}" /PASSWORD:"${HUB_PASSWORD}"  # 创建Hub
-Hub "${HUB}"
-UserCreate "${USER}" /GROUP:none /REALNAME:none /NOTE:none  # 创建用户
-UserPasswordSet "${USER}" /PASSWORD:"${USER_PASSWORD}"  # 设置用户密码
-IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:"${SHARED_KEY}" /DEFAULTHUB:"${HUB}"  # 启用IPsec协议
-BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes  # 创建TAP网桥
-Exit  # 退出管理工具
-EOF
-
-# 启动dnsmasq服务（添加重试逻辑）
-echo "正在启动dnsmasq服务..."
-for i in {1..3}; do
-    systemctl restart dnsmasq
-    sleep 3
-    
-    systemctl is-active --quiet dnsmasq
-    if [ $? -eq 0 ]; then
-        echo "dnsmasq服务已成功启动"
-        break
-    else
-        echo "尝试 $i/3 失败，检查日志..."
-        journalctl -u dnsmasq --no-pager | tail -n 10
-        echo "重新尝试..."
+# 验证服务状态
+echo "验证服务状态..."
+for service in vpnserver rinetd; do
+    if ! systemctl is-active --quiet $service; then
+        echo "错误：$service 服务启动失败"
+        systemctl status $service
+        exit 1
     fi
 done
 
-# 检查dnsmasq最终状态
-systemctl is-active --quiet dnsmasq
-if [ $? -ne 0 ]; then
-    echo "错误：dnsmasq服务无法启动"
-    echo "查看完整错误日志：journalctl -u dnsmasq --no-pager"
-    echo "继续安装，但VPN客户端可能无法获取IP地址"
-else
-    systemctl enable dnsmasq
-fi
-
-# 验证用户创建（修正命令语法）
-echo "验证用户创建..."
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
-Hub "${HUB}"
-UserList
-Exit
-EOF
-
-# 端口映射配置 (rinetd)
-apt-get install -y rinetd 
-cat > /etc/rinetd.conf <<EOF  # 确保EOF顶格
-0.0.0.0 31400 10.8.0.2 31400 
-0.0.0.0 31401 10.8.0.2 31401 
-0.0.0.0 31402 10.8.0.2 31402 
-# 省略其他端口映射（保持原配置）
-0.0.0.0 825 10.8.0.2 825 
-EOF
-
-# 启动服务（修正服务状态检查）
-systemctl enable --now vpnserver 
-systemctl enable --now rinetd 
-systemctl restart dnsmasq 
-
-# 验证用户创建
-echo "验证用户创建..."
-${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:Hub "${HUB}" /CMD:UserList
-
-# 完成提示 
-echo "==================================================" 
-echo "SoftEther VPN 安装完成"
-echo "公网IP: $IPWAN"
-echo "用户名: $USER"
-echo "密码: $USER_PASSWORD"
-echo "IPSec共享密钥: $SHARED_KEY"
-echo "虚拟HUB名称: $HUB"
-echo "服务端口: 443, 5555"
-echo "映射端口: 31400-31409"
-echo "客户端下载: https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe" 
-echo "=================================================="
+echo ">>> +++ SoftEther VPN安装完成 +++！"
+echo "——————————————————————————————————————————————————————"
+echo "公网IP地址：$IPWAN"
+echo "客户端用户：$USER"
+echo "客户端密码：$SERVER_PASSWORD"
+echo "共享密码为：$SHARED_KEY"
+echo "HUB名称为：$HUB"
+echo "服务端端口：443、5555"
+echo "映射端口为：31400-31409"
+echo "映射地址为：$DCP_STATIC"
+echo "服务端管理工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Server_and_VPN_Bridge/softether-vpnserver_vpnbridge-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
+echo "客户端连接工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
+echo "——————————————————————————————————————————————————————"
