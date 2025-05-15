@@ -100,28 +100,65 @@ EOF
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE 
 netfilter-persistent save 
 
-# DNSMASQ配置（修正here-document格式）
-cat > /etc/dnsmasq.conf <<EOF  # 确保EOF顶格
-interface=tap_soft 
-dhcp-range=${LOCAL_RANGE},255.255.255.0,12h 
-dhcp-option=3,${LOCAL_IP}
-port=0 
-dhcp-option=6,${DCP_DNS}
-cache-size=1000 
-# 国内DNS 
-server=/cn/114.114.114.114 
-server=/taobao.com/223.5.5.5  
-server=/taobaocdn.com/114.114.114.114  
-# 国外DNS 
-server=/google.com/223.5.5.5  
-server=/.apple.com/223.6.6.6  
-server=/google.com/8.8.8.8  
-server=114.114.114.114 
-bogus-nxdomain=114.114.114.114 
-# 广告拦截 
-address=/.atm.youku.com/127.0.0.1  
-address=/cupid.iqiyi.com/127.0.0.1  
+# DNSMASQ配置（修正接口名称和配置参数）
+# 确定TAP设备名称
+TAP_DEVICE=$(ip link | grep -o 'tap_soft[^:]*' | head -1)
+if [ -z "$TAP_DEVICE" ]; then
+    echo "警告：未找到tap_soft设备，使用默认名称tap_soft"
+    TAP_DEVICE="tap_soft"
+fi
+
+# 配置dnsmasq
+cat > /etc/dnsmasq.conf <<EOF
+# 监听TAP接口
+interface=$TAP_DEVICE
+bind-interfaces
+
+# DHCP设置
+dhcp-range=$LOCAL_RANGE,255.255.255.0,12h
+dhcp-option=3,$LOCAL_IP  # 网关
+dhcp-option=6,$DCP_DNS   # DNS服务器
+
+# DNS设置
+port=53
+cache-size=1000
+log-queries
+log-dhcp
+
+# 国内DNS
+server=/cn/114.114.114.114
+server=/taobao.com/223.5.5.5
+server=/taobaocdn.com/114.114.114.114
+
+# 国外DNS
+server=/google.com/223.5.5.5
+server=/.apple.com/223.6.6.6
+server=/google.com/8.8.8.8
+server=114.114.114.114
+bogus-nxdomain=114.114.114.114
+
+# 广告拦截
+address=/.atm.youku.com/127.0.0.1
+address=/cupid.iqiyi.com/127.0.0.1
 EOF
+
+# 确保dnsmasq使用我们的配置文件
+echo 'DNSMASQ_OPTS="-C /etc/dnsmasq.conf"' > /etc/default/dnsmasq
+
+# 重启dnsmasq服务
+systemctl restart dnsmasq
+systemctl enable dnsmasq
+
+# 检查dnsmasq状态
+echo "检查dnsmasq服务状态..."
+systemctl is-active --quiet dnsmasq
+if [ $? -eq 0 ]; then
+    echo "dnsmasq服务已启动"
+else
+    echo "错误：dnsmasq服务未启动"
+    echo "查看dnsmasq错误日志："
+    journalctl -u dnsmasq --no-pager | tail -n 20
+fi
 
 # 端口映射配置 (rinetd)
 apt-get install -y rinetd 
