@@ -6,7 +6,7 @@
 # 版本：v1.0
 #==================================================
 # 密码验证函数
-DSetupB() {
+DSetup() {
     clear 
     echo "==========================================================="
     echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891====="
@@ -24,7 +24,7 @@ DSetupB() {
 }
 
 # 调用验证函数
-DSetupB  
+DSetup
 #==================================================
 # 系统环境变量
 IPWAN=$(curl -4 ifconfig.io)
@@ -116,10 +116,28 @@ sysctl --system
 
 # 配置VPN服务器
 echo "开始配置VPN服务器..."
+# 设置服务器密码并验证
 ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD}
+# 验证密码设置是否成功
+if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD About; then
+    echo "错误：服务器密码设置失败，请检查密码"
+    exit 1
+fi
+# 创建HUB并验证
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD HubCreate ${HUB} /PASSWORD:${HUB_PASSWORD}
+# 验证HUB创建是否成功
+if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Hub ${HUB}; then
+    echo "错误：HUB创建失败，请检查密码"
+    exit 1
+fi
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserCreate ${USER} /GROUP:none /REALNAME:none /NOTE:none
+# 设置用户密码并验证
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserPasswordSet ${USER} /PASSWORD:${USER_PASSWORD}
+# 验证用户密码设置是否成功
+if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD User ${USER}; then
+    echo "错误：用户密码设置失败，请检查密码"
+    exit 1
+fi
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB}
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes
 
@@ -206,9 +224,12 @@ netfilter-persistent save
 
 
 # 验证HUB是否创建成功
-echo "开始验证HUB是否创建成功..."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 开始验证HUB是否创建成功..."
 if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Hub ${HUB}; then
-    echo "错误：HUB创建失败，请检查配置"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 错误：HUB创建失败，请检查以下配置："
+    echo "- HUB名称: ${HUB}"
+    echo "- 服务器密码: ${SERVER_PASSWORD}"
+    echo "- VPN服务器状态: $(systemctl is-active vpnserver)"
     exit 1
 fi
 
