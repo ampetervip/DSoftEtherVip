@@ -179,11 +179,18 @@ EOF
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB} 
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes 
     
-    # 配置SecureNAT和DHCP设置 
-    MAC="AA-BB-CC$(dd if=/dev/urandom bs=1 count=3 2>/dev/null | hexdump -e '3/1 "-%02X"')"
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable 
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0 /MAC:$MAC 
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes 
+    # 安装和配置dnsmasq
+    apt install -y dnsmasq
+    cat > /etc/dnsmasq.conf << EOF
+interface=tap_soft
+dhcp-range=${DHCP_MIN},${DHCP_MAX},12h
+dhcp-option=3,${LOCAL_IP}
+dhcp-option=6,${DCP_DNS},8.8.4.4
+server=8.8.8.8
+server=8.8.4.4
+EOF
+    systemctl restart dnsmasq
+    systemctl enable dnsmasq
 
     # 配置网络转发规则和IPv4优先级
     iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
