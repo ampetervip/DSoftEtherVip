@@ -97,9 +97,15 @@ BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes  # 创建TAP网桥
 Exit  # 退出管理工具
 EOF
 
-# 防火墙规则 
+# 防火墙规则部分（新增 SSH 允许规则）
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+iptables -A OUTPUT -p tcp --sport 22 -j ACCEPT
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE 
 netfilter-persistent save 
+
+# 服务启动等待时间调整
+systemctl start vpnserver
+sleep 10  # 增加等待时间
 
 # DNSMASQ配置（改进错误处理和端口冲突解决）
 echo "配置dnsmasq服务..."
