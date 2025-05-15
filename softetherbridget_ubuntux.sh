@@ -77,9 +77,30 @@ ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB}
 ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes
 
+# 配置SecureNAT和DHCP设置
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /MAC:5E:6E:83:46:F0:91 /IP:${LOCAL_IP} /MASK:255.255.255.0
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+
 # 配置网络转发规则
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
 netfilter-persistent save
+
+# 系统优化配置
+echo "* soft nofile 1048576" >> /etc/security/limits.conf
+echo "* hard nofile 1048576" >> /etc/security/limits.conf
+echo "net.core.somaxconn = 65535" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_max_syn_backlog = 65535" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_max_tw_buckets = 1440000" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_fin_timeout = 15" >> /etc/sysctl.conf
+sysctl -p
+
+# VPN服务器性能优化
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxSession 100000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxConnection 100000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetMaxBufferSize 4294967295
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxSession ${HUB} 50000
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD SetHubMaxConnection ${HUB} 50000
 
 # 配置DNSMASQ
 cat > /etc/dnsmasq.conf << EOF
@@ -89,7 +110,10 @@ dhcp-option=option:netmask,255.255.255.0
 dhcp-option=tap_soft,3,${LOCAL_IP}
 port=0
 dhcp-option=option:dns-server,${DCP_DNS}
-cache-size=1000
+dhcp-host=*,${DCP_STATIC}
+cache-size=100000
+min-cache-ttl=3600
+dns-forward-max=1000
 
 # DNS服务器配置
 server=/cn/114.114.114.114
