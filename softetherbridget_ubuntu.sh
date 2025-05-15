@@ -324,11 +324,6 @@ MainMenu() {
             Uninstall
             ;;
         3)
-            DSetup
-            Uninstall
-            InstallVPN
-            ;;
-        4)
             exit 0
             ;;
         *)
