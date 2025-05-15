@@ -39,10 +39,10 @@ HUB="PiNodeHub"
 HUB_PASSWORD="xiaojie"  # 新增：定义HUB密码
 USER_PASSWORD="xiaojie" # 新增：定义用户密码
 
-# 安装前准备 
+# 安装前准备（添加noninteractive选项）
 echo "+++ 开始安装SoftEther VPN +++"
-apt-get update 
-apt-get install -y wget dnsmasq expect build-essential libreadline-dev libssl-dev libncurses-dev iptables-persistent netfilter-persistent 
+DEBIAN_FRONTEND=noninteractive apt-get update 
+DEBIAN_FRONTEND=noninteractive apt-get install -y wget dnsmasq expect build-essential libreadline-dev libssl-dev libncurses-dev iptables-persistent netfilter-persistent 
 
 # 安装SoftEther（修正编译步骤）
 wget ${DCP_URL}/softether-vpnserver-v4.38-9760-rtm-2021.08.17-linux-x64-64bit.tar.gz  
