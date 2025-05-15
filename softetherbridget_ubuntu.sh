@@ -16,13 +16,14 @@ HUB_PASSWORD=${SERVER_PASSWORD}
 USER_PASSWORD=${SERVER_PASSWORD}
 TARGET="/usr/local/"
 
-# 网络配置
+# 网络配置（更新后）
+BRIDGE_NAME="soft"
+TAP_INTERFACE="tap_${HUB}"
 LOCAL_IP="192.168.100.1"
 DCP_DNS="8.8.8.8"
 DCP_STATIC="192.168.100.2"
-# 确保DHCP只分配固定IP
-DHCP_MIN="192.168.100.2"
-DHCP_MAX="192.168.100.2"
+DHCP_MIN="192.168.100.100"
+DHCP_MAX="192.168.100.200"
 
 # 卸载函数
 Uninstall() {
@@ -177,29 +178,34 @@ EOF
         exit 1 
     fi 
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB} 
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes 
+    # 创建网桥并指定网桥名称（使用变量 ${BRIDGE_NAME}）
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:${BRIDGE_NAME} /TAP:yes
+    # 新增：激活对应的 TAP 接口（接口名为 tap_${HUB}）
+    ip link set ${TAP_INTERFACE} up
     
-    # 安装和配置dnsmasq
-    apt install -y dnsmasq
-    cat > /etc/dnsmasq.conf << EOF
-interface=tap_soft
-dhcp-range=${DHCP_MIN},${DHCP_MAX},12h
+# 安装VPN函数中配置dnsmasq的部分
+apt install -y dnsmasq
+cat > /etc/dnsmasq.conf << EOF
+interface=${TAP_INTERFACE}
+dhcp-range=${DHCP_MIN},${DHCP_MAX},255.255.255.0,24h
 dhcp-option=3,${LOCAL_IP}
 dhcp-option=6,${DCP_DNS},8.8.4.4
 server=8.8.8.8
 server=8.8.4.4
 EOF
-    systemctl restart dnsmasq
-    systemctl enable dnsmasq
+systemctl restart dnsmasq
+systemctl enable dnsmasq
 
     # 配置网络转发规则和IPv4优先级
     iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
+    iptables -A INPUT -p udp --dport 67:68 -j ACCEPT
+    iptables -A OUTPUT -p udp --sport 67:68 -j ACCEPT
     netfilter-persistent save
 
-    # 验证tap_soft接口状态
-    echo "验证tap_soft接口状态..."
-    if ! ip link show tap_soft > /dev/null 2>&1; then
-        echo "错误：tap_soft接口未创建成功"
+    # 验证TAP接口状态
+    echo "验证${TAP_INTERFACE}接口状态..."
+    if ! ip link show ${TAP_INTERFACE} > /dev/null 2>&1; then
+        echo "错误：${TAP_INTERFACE}接口未创建成功"
         exit 1
     fi
 
