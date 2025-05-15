@@ -107,7 +107,7 @@ netfilter-persistent save
 systemctl start vpnserver
 sleep 10  # 增加等待时间
 
-# DNSMASQ配置（改进错误处理和端口冲突解决）
+# DNSMASQ配置修正
 echo "配置dnsmasq服务..."
 
 # 停止并禁用systemd-resolved以避免端口冲突
@@ -137,14 +137,14 @@ fi
 
 echo "使用TAP设备: $TAP_DEVICE"
 
-# 配置dnsmasq
+# 配置dnsmasq（修正dhcp-range格式）
 cat > /etc/dnsmasq.conf <<EOF
 # 监听TAP接口
 interface=$TAP_DEVICE
 bind-interfaces
 
-# DHCP设置
-dhcp-range=$LOCAL_RANGE,255.255.255.0,12h
+# DHCP设置（修正为正确的dhcp-range格式）
+dhcp-range=$LOCAL_IP,$(echo $LOCAL_RANGE | cut -d- -f2),255.255.255.0,12h
 dhcp-option=3,$LOCAL_IP  # 网关
 dhcp-option=6,$DCP_DNS   # DNS服务器
 
@@ -174,6 +174,9 @@ EOF
 # 确保dnsmasq使用我们的配置文件
 echo 'DNSMASQ_OPTS="-C /etc/dnsmasq.conf"' > /etc/default/dnsmasq
 
+# 创建systemd服务目录（如果不存在）
+mkdir -p /etc/systemd/system/dnsmasq.service.d
+
 # 创建一个systemd服务依赖项，确保在网络完全就绪后启动dnsmasq
 cat > /etc/systemd/system/dnsmasq.service.d/override.conf <<EOF
 [Unit]
@@ -183,6 +186,18 @@ EOF
 
 # 重新加载systemd配置
 systemctl daemon-reload
+
+# SoftEther用户配置修正（分离Hub选择和命令执行）
+echo "配置SoftEther VPN用户..."
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
+HubCreate "${HUB}" /PASSWORD:"${HUB_PASSWORD}"  # 创建Hub
+Hub "${HUB}"
+UserCreate "${USER}" /GROUP:none /REALNAME:none /NOTE:none  # 创建用户
+UserPasswordSet "${USER}" /PASSWORD:"${USER_PASSWORD}"  # 设置用户密码
+IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:"${SHARED_KEY}" /DEFAULTHUB:"${HUB}"  # 启用IPsec协议
+BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes  # 创建TAP网桥
+Exit  # 退出管理工具
+EOF
 
 # 启动dnsmasq服务（添加重试逻辑）
 echo "正在启动dnsmasq服务..."
@@ -210,6 +225,14 @@ if [ $? -ne 0 ]; then
 else
     systemctl enable dnsmasq
 fi
+
+# 验证用户创建（修正命令语法）
+echo "验证用户创建..."
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" <<EOF
+Hub "${HUB}"
+UserList
+Exit
+EOF
 
 # 端口映射配置 (rinetd)
 apt-get install -y rinetd 
