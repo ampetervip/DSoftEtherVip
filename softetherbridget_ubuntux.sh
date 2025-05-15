@@ -34,7 +34,16 @@ rm -f softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz
 
 # 编译安装
 cd ${TARGET}vpnserver
-expect -c 'spawn make; expect number:; send "1\r"; expect number:; send "1\r"; expect number:; send "1\r"; interact'
+expect << EOF
+spawn make
+expect "number:"
+send "1\r"
+expect "number:"
+send "1\r"
+expect "number:"
+send "1\r"
+expect eof
+EOF
 
 # 设置权限
 chmod 600 ${TARGET}vpnserver/*
