@@ -17,12 +17,12 @@ USER_PASSWORD=${SERVER_PASSWORD}
 TARGET="/usr/local/"
 
 # 网络配置
-LOCAL_IP="10.0.8.1"
+LOCAL_IP="192.168.100.1"
 DCP_DNS="8.8.8.8"
-DCP_STATIC="10.0.8.2"
+DCP_STATIC="192.168.100.2"
 # 确保DHCP只分配固定IP
-DHCP_MIN="10.0.8.2"
-DHCP_MAX="10.0.8.2"
+DHCP_MIN="192.168.100.2"
+DHCP_MAX="192.168.100.2"
 
 # 卸载函数
 Uninstall() {
@@ -186,7 +186,7 @@ EOF
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes 
 
     # 配置网络转发规则和IPv4优先级
-    iptables -t nat -A POSTROUTING -s 10.0.8.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
     netfilter-persistent save
 
     # 验证tap_soft接口状态
