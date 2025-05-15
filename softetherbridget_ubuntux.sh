@@ -123,7 +123,7 @@ dhcp-range=tap_soft,${DCP_STATIC},${DCP_STATIC},255.255.255.0,12h
 dhcp-option=tap_soft,3,${LOCAL_IP}
 dhcp-option=tap_soft,6,${DCP_DNS}
 port=0
-dhcp-host=5E:6E:83:46:F0:91,${DCP_STATIC}
+# 移除MAC地址绑定，允许任何客户端获取固定IP
 cache-size=100000
 min-cache-ttl=3600
 dns-forward-max=1000
