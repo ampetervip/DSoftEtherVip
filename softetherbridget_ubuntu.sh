@@ -312,8 +312,8 @@ MainMenu() {
             Uninstall
             ;;
         3)
-            Uninstall
             DSetup
+            Uninstall
             InstallVPN
             ;;
         4)
