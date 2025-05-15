@@ -57,7 +57,7 @@ DSetup() {
     echo ""
     stty erase ^H
     local DcpPass=515900
-    read -p "请输入安装密码：" PASSWD
+    read -p "请输入密码：" PASSWD
     if [ "$PASSWD" == "$DcpPass" ]; then
         :
     else
@@ -148,41 +148,41 @@ EOF
         exit 1
     fi
 
-    # 配置VPN服务器
-    echo "开始配置VPN服务器..."
-    # 设置服务器密码并验证
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD}
-    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD About; then
-        echo "错误：服务器密码设置失败，请检查密码"
-        echo "尝试重新设置密码..."
-        ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD}
-        sleep 2
-        if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD About; then
-            echo "错误：服务器密码设置仍然失败，请检查VPN服务器状态"
-            systemctl status vpnserver
-            exit 1
-        fi
-    fi
-    # 创建HUB并验证
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD HubCreate ${HUB} /PASSWORD:${HUB_PASSWORD}
-    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Hub ${HUB}; then
-        echo "错误：HUB创建失败，请检查密码"
-        exit 1
-    fi
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserCreate ${USER} /GROUP:none /REALNAME:none /NOTE:none
-    # 设置用户密码并验证
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserPasswordSet ${USER} /PASSWORD:${USER_PASSWORD}
-    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD User ${USER}; then
-        echo "错误：用户密码设置失败，请检查密码"
-        exit 1
-    fi
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB}
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes
-
-    # 配置SecureNAT和DHCP设置
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+    # 配置VPN服务器 
+    echo "开始配置VPN服务器..." 
+    # 设置服务器密码并验证 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD} 
+    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD About; then 
+        echo "错误：服务器密码设置失败，请检查密码" 
+        echo "尝试重新设置密码..." 
+        ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD} 
+        sleep 2 
+        if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD About; then 
+            echo "错误：服务器密码设置仍然失败，请检查VPN服务器状态" 
+            systemctl status vpnserver 
+            exit 1 
+        fi 
+    fi 
+    # 创建HUB并验证 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD HubCreate ${HUB} /PASSWORD:${HUB_PASSWORD} 
+    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD Hub ${HUB}; then 
+        echo "错误：HUB创建失败，请检查密码" 
+        exit 1 
+    fi 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserCreate ${USER} /GROUP:none /REALNAME:none /NOTE:none 
+    # 设置用户密码并验证 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserPasswordSet ${USER} /PASSWORD:${USER_PASSWORD} 
+    if ! ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD UserGet ${USER}; then 
+        echo "错误：用户创建或密码设置失败，请检查密码" 
+        exit 1 
+    fi 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB} 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:soft /TAP:yes 
+    
+    # 配置SecureNAT和DHCP设置 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0 
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DHCP_MIN} /END:${DHCP_MAX} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes 
 
     # 配置网络转发规则和IPv4优先级
     echo "开始配置网络转发规则和IPv4优先级..."
@@ -309,10 +309,9 @@ MainMenu() {
     echo "================================================================"
     echo "1. 安装 VPN"
     echo "2. 卸载 VPN"
-    echo "3. 重新安装 VPN"
-    echo "4. 退出"
+    echo "3. 退出"
     echo ""
-    read -p "请输入选择 [1-4]: " choice
+    read -p "请输入选择 [1-3]: " choice
 
     case $choice in
         1)
