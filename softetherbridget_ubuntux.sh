@@ -160,6 +160,22 @@ systemctl start vpnserver
 # 等待VPN服务器完全启动
 sleep 10
 
+# 启动rinetd服务并检查状态
+systemctl restart rinetd
+sleep 2
+if ! systemctl is-active --quiet rinetd; then
+    echo "错误：rinetd服务启动失败"
+    systemctl status rinetd
+    exit 1
+fi
+
+# 添加iptables规则允许端口转发
+for port in {31400..31409}; do
+    iptables -A INPUT -p tcp --dport $port -j ACCEPT
+    iptables -A FORWARD -p tcp --dport $port -j ACCEPT
+done
+netfilter-persistent save
+
 # 确保服务正在运行
 if ! systemctl is-active --quiet vpnserver; then
     echo "错误：VPN服务启动失败"
