@@ -33,7 +33,7 @@ EOF
 # 更新系统并安装依赖
 apt update && apt upgrade -y
 DEBIAN_FRONTEND=noninteractive apt install -y software-properties-common
-DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd netfilter-persistent iptables-persistent
+DEBIAN_FRONTEND=noninteractive apt install -y build-essential wget expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd netfilter-persistent iptables-persistent
 
 # 下载并安装最新版本的SoftEther VPN Server
 cd ${TARGET}
@@ -167,6 +167,16 @@ if ! systemctl is-active --quiet rinetd; then
     systemctl status rinetd
     exit 1
 fi
+
+# 配置SecureNAT和DHCP设置
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatEnable
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD SecureNatHostSet /IP:${LOCAL_IP} /MASK:255.255.255.0
+${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /HUB:${HUB} /CMD DhcpSet /START:${DCP_STATIC} /END:${DCP_STATIC} /MASK:255.255.255.0 /EXPIRE:7200 /GW:${LOCAL_IP} /DNS:${DCP_DNS} /DNS2:8.8.4.4 /DOMAIN:local /LOG:yes
+
+# 移除dnsmasq服务启动
+# 启动其他服务
+# systemctl enable --now dnsmasq
+systemctl enable --now rinetd
 
 # 添加iptables规则允许端口转发
 for port in {31400..31409}; do
