@@ -136,6 +136,18 @@ EOF
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/ipv4_forwarding.conf
     sysctl --system
 
+    # 启动VPN服务器并检查状态
+    echo "开始启动VPN服务器并检查状态..."
+    systemctl daemon-reload
+    systemctl enable vpnserver
+    systemctl start vpnserver
+    sleep 10  # 等待服务器启动
+    if ! systemctl is-active --quiet vpnserver; then
+        echo "错误：VPN服务器启动失败"
+        systemctl status vpnserver
+        exit 1
+    fi
+
     # 配置VPN服务器
     echo "开始配置VPN服务器..."
     # 设置服务器密码并验证
