@@ -22,9 +22,18 @@ DCP_STATIC="10.8.0.2"
 
 echo "开始安装 SoftEther VPN Server..."
 
+# 配置软件源
+cat > /etc/apt/sources.list << EOF
+deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse
+EOF
+
 # 更新系统并安装依赖
-#apt update && apt upgrade -y
-apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd iptables-persistent
+apt update && apt upgrade -y
+apt install -y software-properties-common
+apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd netfilter-persistent iptables-persistent
 
 # 下载并安装最新版本的SoftEther VPN Server
 cd ${TARGET}
@@ -34,7 +43,9 @@ rm -f softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz
 
 # 编译安装
 cd ${TARGET}vpnserver
-expect << EOF
+cat > build.expect << EOF
+#!/usr/bin/expect
+set timeout 300
 spawn make
 expect "number:"
 send "1\r"
@@ -44,6 +55,9 @@ expect "number:"
 send "1\r"
 expect eof
 EOF
+
+chmod +x build.expect
+./build.expect
 
 # 设置权限
 chmod 600 ${TARGET}vpnserver/*
@@ -144,7 +158,14 @@ systemctl enable vpnserver
 systemctl start vpnserver
 
 # 等待VPN服务器完全启动
-sleep 5
+sleep 10
+
+# 确保服务正在运行
+if ! systemctl is-active --quiet vpnserver; then
+    echo "错误：VPN服务启动失败"
+    systemctl status vpnserver
+    exit 1
+fi
 
 # 配置VPN服务器并验证
 ${TARGET}vpnserver/vpncmd localhost /SERVER /CMD ServerPasswordSet ${SERVER_PASSWORD}
