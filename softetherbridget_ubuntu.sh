@@ -3,7 +3,7 @@
 # 作者：DengCaiPing
 # 微信：51529502
 # 时间：2025-05-15
-# 版本：v1.1
+# 版本：v1.2（修复接口创建问题）
 
 # 系统环境变量
 IPWAN=$(curl -4 ifconfig.io)
@@ -18,7 +18,7 @@ TARGET="/usr/local/"
 
 # 网络配置（更新后）
 BRIDGE_NAME="soft"
-TAP_INTERFACE="tap_${HUB}"
+TAP_INTERFACE="tap_${HUB}"  # 生成如 tap_PiNodeHub 的接口名
 LOCAL_IP="192.168.100.1"
 DCP_DNS="8.8.8.8"
 DCP_STATIC="192.168.100.2"
@@ -70,6 +70,17 @@ DSetup() {
 # 安装VPN函数
 InstallVPN() {
     echo "开始安装 SoftEther VPN Server..."
+
+    # 检查并加载TAP网络驱动
+    echo "检查并加载TAP网络驱动..."
+    if ! lsmod | grep -q tun; then
+        modprobe tun
+        if [ $? -ne 0 ]; then
+            echo "错误：无法加载TUN/TAP模块，请检查内核配置"
+            exit 1
+        fi
+        echo "tun" >> /etc/modules  # 确保开机自动加载
+    fi
 
     # 配置软件源
     echo "开始配置软件源..."
@@ -143,6 +154,14 @@ EOF
     systemctl enable vpnserver
     systemctl start vpnserver
     sleep 10  # 等待服务器启动
+    
+    # 检查服务器日志
+    LOG_FILE="${TARGET}vpnserver/server_log.txt"
+    if [ -f "$LOG_FILE" ]; then
+        echo "SoftEther 服务器日志（最近20行）："
+        tail -n 20 "$LOG_FILE"
+    fi
+
     if ! systemctl is-active --quiet vpnserver; then
         echo "错误：VPN服务器启动失败"
         systemctl status vpnserver
@@ -178,14 +197,31 @@ EOF
         exit 1 
     fi 
     ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD IPsecEnable /L2TP:yes /L2TPRAW:yes /ETHERIP:yes /PSK:${SHARED_KEY} /DEFAULTHUB:${HUB} 
-    # 创建网桥并指定网桥名称（使用变量 ${BRIDGE_NAME}）
-    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:${BRIDGE_NAME} /TAP:yes
-    # 新增：激活对应的 TAP 接口（接口名为 tap_${HUB}）
-    ip link set ${TAP_INTERFACE} up
     
-# 安装VPN函数中配置dnsmasq的部分
-apt install -y dnsmasq
-cat > /etc/dnsmasq.conf << EOF
+    # 创建网桥并验证
+    echo "创建VPN网桥..."
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeCreate ${HUB} /DEVICE:${BRIDGE_NAME} /TAP:yes
+
+    # 立即验证网桥是否创建成功
+    echo "验证网桥创建结果..."
+    BRIDGE_STATUS=$(${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:${SERVER_PASSWORD} /CMD BridgeList | grep "${HUB}")
+    if [[ -z "$BRIDGE_STATUS" ]]; then
+        echo "错误：网桥创建失败，请检查SoftEther日志"
+        if [ -f "$LOG_FILE" ]; then
+            echo "最近20条日志记录："
+            tail -n 20 "$LOG_FILE"
+        fi
+        exit 1
+    fi
+
+    # 激活TAP接口
+    echo "激活TAP接口..."
+    ip link set ${TAP_INTERFACE} up
+
+    # 安装和配置dnsmasq
+    echo "配置DHCP服务..."
+    apt install -y dnsmasq
+    cat > /etc/dnsmasq.conf << EOF
 interface=${TAP_INTERFACE}
 dhcp-range=${DHCP_MIN},${DHCP_MAX},255.255.255.0,24h
 dhcp-option=3,${LOCAL_IP}
@@ -193,16 +229,17 @@ dhcp-option=6,${DCP_DNS},8.8.4.4
 server=8.8.8.8
 server=8.8.4.4
 EOF
-systemctl restart dnsmasq
-systemctl enable dnsmasq
+    systemctl restart dnsmasq
+    systemctl enable dnsmasq
 
-    # 配置网络转发规则和IPv4优先级
+    # 配置网络转发规则
+    echo "配置防火墙规则..."
     iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
-    iptables -A INPUT -p udp --dport 67:68 -j ACCEPT
+    iptables -A INPUT -p udp --dport 67:68 -j ACCEPT  # 允许DHCP通信
     iptables -A OUTPUT -p udp --sport 67:68 -j ACCEPT
     netfilter-persistent save
 
-    # 验证TAP接口状态
+    # 验证TAP接口状态（使用变量）
     echo "验证${TAP_INTERFACE}接口状态..."
     if ! ip link show ${TAP_INTERFACE} > /dev/null 2>&1; then
         echo "错误：${TAP_INTERFACE}接口未创建成功"
@@ -280,7 +317,7 @@ EOF
 
     # 验证服务状态
     echo "验证服务状态..."
-    for service in vpnserver rinetd; do
+    for service in vpnserver rinetd dnsmasq; do  # 新增dnsmasq检查
         if ! systemctl is-active --quiet $service; then
             echo "错误：$service 服务启动失败"
             systemctl status $service
@@ -289,7 +326,7 @@ EOF
     done
 
     echo ">>> +++ SoftEther VPN安装完成 +++！"
-    echo "——————————————————————————————————————————————————————"
+    echo "——————————————————————————————————————————————————"
     echo "公网IP地址：$IPWAN"
     echo "客户端用户：$USER"
     echo "客户端密码：$SERVER_PASSWORD"
