@@ -23,7 +23,7 @@ DCP_STATIC="10.8.0.2"
 echo "开始安装 SoftEther VPN Server..."
 
 # 更新系统并安装依赖
-#apt update && apt upgrade -y
+apt update && apt upgrade -y
 apt install -y build-essential wget dnsmasq expect gcc zlib1g-dev libssl-dev libreadline-dev libncurses5-dev rinetd iptables-persistent
 
 # 下载并安装最新版本的SoftEther VPN Server
