@@ -100,13 +100,35 @@ EOF
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE 
 netfilter-persistent save 
 
-# DNSMASQ配置（修正接口名称和配置参数）
+# DNSMASQ配置（改进错误处理和端口冲突解决）
+echo "配置dnsmasq服务..."
+
+# 停止并禁用systemd-resolved以避免端口冲突
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
+
+# 备份resolv.conf并创建新的
+mv /etc/resolv.conf /etc/resolv.conf.backup
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
 # 确定TAP设备名称
 TAP_DEVICE=$(ip link | grep -o 'tap_soft[^:]*' | head -1)
 if [ -z "$TAP_DEVICE" ]; then
-    echo "警告：未找到tap_soft设备，使用默认名称tap_soft"
-    TAP_DEVICE="tap_soft"
+    echo "警告：未找到tap_soft设备，尝试手动创建..."
+    # 创建TAP设备
+    ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:BridgeList | grep -q "tap_soft"
+    if [ $? -ne 0 ]; then
+        ${TARGET}vpnserver/vpncmd localhost /SERVER /PASSWORD:"${SERVER_PASSWORD}" /CMD:BridgeCreate "${HUB}" /DEVICE:soft /TAP:yes
+    fi
+    # 再次尝试检测TAP设备
+    TAP_DEVICE=$(ip link | grep -o 'tap_soft[^:]*' | head -1)
+    if [ -z "$TAP_DEVICE" ]; then
+        echo "错误：无法创建或检测tap_soft设备"
+        TAP_DEVICE="tap_soft"  # 作为最后手段使用默认名称
+    fi
 fi
+
+echo "使用TAP设备: $TAP_DEVICE"
 
 # 配置dnsmasq
 cat > /etc/dnsmasq.conf <<EOF
@@ -145,19 +167,41 @@ EOF
 # 确保dnsmasq使用我们的配置文件
 echo 'DNSMASQ_OPTS="-C /etc/dnsmasq.conf"' > /etc/default/dnsmasq
 
-# 重启dnsmasq服务
-systemctl restart dnsmasq
-systemctl enable dnsmasq
+# 创建一个systemd服务依赖项，确保在网络完全就绪后启动dnsmasq
+cat > /etc/systemd/system/dnsmasq.service.d/override.conf <<EOF
+[Unit]
+After=network-online.target
+Wants=network-online.target
+EOF
 
-# 检查dnsmasq状态
-echo "检查dnsmasq服务状态..."
+# 重新加载systemd配置
+systemctl daemon-reload
+
+# 启动dnsmasq服务（添加重试逻辑）
+echo "正在启动dnsmasq服务..."
+for i in {1..3}; do
+    systemctl restart dnsmasq
+    sleep 3
+    
+    systemctl is-active --quiet dnsmasq
+    if [ $? -eq 0 ]; then
+        echo "dnsmasq服务已成功启动"
+        break
+    else
+        echo "尝试 $i/3 失败，检查日志..."
+        journalctl -u dnsmasq --no-pager | tail -n 10
+        echo "重新尝试..."
+    fi
+done
+
+# 检查dnsmasq最终状态
 systemctl is-active --quiet dnsmasq
-if [ $? -eq 0 ]; then
-    echo "dnsmasq服务已启动"
+if [ $? -ne 0 ]; then
+    echo "错误：dnsmasq服务无法启动"
+    echo "查看完整错误日志：journalctl -u dnsmasq --no-pager"
+    echo "继续安装，但VPN客户端可能无法获取IP地址"
 else
-    echo "错误：dnsmasq服务未启动"
-    echo "查看dnsmasq错误日志："
-    journalctl -u dnsmasq --no-pager | tail -n 20
+    systemctl enable dnsmasq
 fi
 
 # 端口映射配置 (rinetd)
