@@ -6,7 +6,8 @@
 # 版本：v1.1
 
 # 系统环境变量
-IPWAN=$(curl -4 ifconfig.io)  # 设置为固定公网IP
+#IPWAN=$(curl -4 ifconfig.io)  # 设置为固定公网IP
+IPWAN=$(ip -4 addr show eth0 | grep -oP 'inet \K[\d.]+') # 获取eth0网卡IP地址
 SERVER_IP=$IPWAN
 USER="pi"
 SERVER_PASSWORD="xiaojie"
