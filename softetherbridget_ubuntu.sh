@@ -213,6 +213,7 @@ EOF
     # 配置网络转发规则和IPv4优先级
     iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE
     netfilter-persistent save
+    systemctl restart netfilter-persistent
 
     # 验证并配置tap_soft接口
     echo "验证并配置tap_soft接口..."
