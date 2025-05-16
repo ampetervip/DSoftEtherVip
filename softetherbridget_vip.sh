@@ -734,7 +734,8 @@ MainMenu() {
                 InstallVPN_Ubuntu
                 ;;
             else
-                echo "当前系统是$os版本，无法安装，请切换按装菜单！"
+                echo "当前系统是$os版本，无法安装，请切换菜单选择2安装！"
+                MainMenu
             fi
         2)
             if [[ "$os" = "centos" ]]; then
@@ -742,7 +743,8 @@ MainMenu() {
                 InstallVPN_Centos
                 ;;
             else
-                echo "当前系统是$os版本，无法安装，请切换按装菜单！"
+                echo "当前系统是$os版本，无法安装，请切换菜单选择1安装！"
+                MainMenu
             fi
         3)
             DSetup
