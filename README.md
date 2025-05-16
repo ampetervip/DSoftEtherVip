@@ -4,7 +4,7 @@
 
 #### 2、Softether Vpn----一键安装脚本加强版(Ubuntu版本)
 
-`bash -c "$(wget -O- https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main/softetherbridget_ubuntux.sh)"`
+`bash -c "$(curl -fsSL https://raw.githubusercontent.com/ampetervip/DSoftEtherVip/main/softetherbridget_ubuntux.sh)"`
 
 #### 3、Softether Vpn----一键安装脚本(Centos版本)
 
