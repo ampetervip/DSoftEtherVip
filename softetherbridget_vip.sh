@@ -702,14 +702,14 @@ MainMenu() {
     echo "3. 卸载 VPN"
     echo "4. 退出"
     echo ""
-    read -p "请输入选择 [1-3]: " choice
+    read -p "请输入选择 [1-4]: " choice
 
     case $choice in
         1)
             DSetup
             InstallVPN_Ubuntu
             ;;
-        1)
+        2)
             DSetup
             InstallVPN_Centos
             ;;
