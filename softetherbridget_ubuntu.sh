@@ -6,7 +6,7 @@
 # 版本：v1.1
 
 # 系统环境变量
-IPWAN="166.88.61.227"  # 设置为固定公网IP
+IPWAN=$(curl -4 ifconfig.io)  # 设置为固定公网IP
 SERVER_IP=$IPWAN
 USER="pi"
 SERVER_PASSWORD="xiaojie"
