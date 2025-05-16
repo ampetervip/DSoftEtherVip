@@ -6,7 +6,7 @@
 # 版本：v1.1
 
 # 系统环境变量
-#IPWAN=$(curl -4 ifconfig.io)  # 设置为固定公网IP
+# IPWAN=$(curl -4 ifconfig.io)  # 设置为固定公网IP
 IPWAN=$(ip -4 addr show eth0 | grep -oP 'inet \K[\d.]+') # 获取eth0网卡IP地址
 SERVER_IP=$IPWAN
 USER="pi"
@@ -242,7 +242,7 @@ dhcp-option=option:router,${LOCAL_IP}
 dhcp-option=option:dns-server,${LOCAL_IP}
 
 # 固定IP分配 - 确保MAC地址格式正确
-#dhcp-host=00:00:00:00:00:01,${DCP_STATIC},infinite
+# dhcp-host=00:00:00:00:00:01,${DCP_STATIC},infinite
 
 # 日志设置
 log-queries
