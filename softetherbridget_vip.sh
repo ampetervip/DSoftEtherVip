@@ -722,7 +722,7 @@ MainMenu() {
     echo "==========================================================================="
     echo "1. 安装 SoftEtherVPN_Ubuntu版"
     echo "2. 安装 SoftEtherVPN_Centos版"
-    echo "3. 卸载 VPN"
+    echo "3. 卸载 SoftEtherVPN"
     echo "4. 退出"
     echo ""
     read -p "请输入选择 [1-4]: " choice
@@ -732,20 +732,22 @@ MainMenu() {
             if [[ "$os" = "debian" || "$os" = "ubuntu" ]]; then
                 DSetup
                 InstallVPN_Ubuntu
-                ;;
             else
                 echo "当前系统是$os版本，无法安装，请切换菜单选择2安装！"
+                read -p "按回车键返回主菜单..."
                 MainMenu
             fi
+            ;;
         2)
             if [[ "$os" = "centos" ]]; then
                 DSetup
                 InstallVPN_Centos
-                ;;
             else
                 echo "当前系统是$os版本，无法安装，请切换菜单选择1安装！"
+                read -p "按回车键返回主菜单..."
                 MainMenu
             fi
+            ;;
         3)
             DSetup
             Uninstall
