@@ -525,9 +525,10 @@ EOF
     echo "服务端端口：443、5555"
     echo "映射端口为：31400-31409"
     echo "映射地址为：$DCP_STATIC"
+    echo ""
     
     # 添加端口转发故障排查指南
-    echo "\n端口转发故障排查指南："
+    echo "端口转发故障排查指南："
     echo "1. 如果外部无法访问端口(如 http://${IPWAN}:31409/)，请检查："
     echo "   - 确认rinetd服务正在运行: systemctl status rinetd"
     echo "   - 检查防火墙是否允许端口: iptables -L -n | grep 31409"
