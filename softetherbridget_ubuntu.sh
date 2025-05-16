@@ -60,7 +60,7 @@ DSetup() {
     echo "====Softether一键安装脚本(Ubuntu专用)  微信：15521188891====="
     echo "============================================================"
     echo ""
-    stty erase ^H
+    #stty erase ^H
     local valid_passwords=("515900" "223300")  # 允许的密码列表
     read -p "请输入密码：" PASSWD
     
