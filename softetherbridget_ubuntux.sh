@@ -58,13 +58,23 @@ DSetup() {
     echo "============================================================"
     echo ""
     stty erase ^H
-    local DcpPass=515900
+    local valid_passwords=("515900" "223300")  # 允许的密码列表
     read -p "请输入密码：" PASSWD
-    if [ "$PASSWD" == "$DcpPass" ]; then
-        :
+    
+    # 检查输入是否在允许的密码列表中
+    local is_valid=0
+    for password in "${valid_passwords[@]}"; do
+        if [ "$PASSWD" == "$password" ]; then
+            is_valid=1
+            break
+        fi
+    done
+    
+    if [ $is_valid -eq 1 ]; then
+        :  # 密码正确，执行后续操作
     else
         echo "密码错误，请重新输入！"
-        DSetup
+        DSetup  # 递归调用重新输入
     fi
 }
 
