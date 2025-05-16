@@ -430,8 +430,8 @@ EOF
     # 验证端口转发配置
     echo "验证端口转发配置..."
     # 检查rinetd配置是否正确加载
-    if ! grep -q "31409" /etc/rinetd.conf; then
-        echo "错误：rinetd配置文件中未找到端口31409的配置"
+    if ! grep -q "31401" /etc/rinetd.conf; then
+        echo "错误：rinetd配置文件中未找到端口31401的配置"
         cat /etc/rinetd.conf
         exit 1
     fi
@@ -490,8 +490,8 @@ EOF
     
     # 测试rinetd端口转发
     echo "检查rinetd端口转发状态..."
-    if ! netstat -tulpn | grep rinetd | grep -q "31409"; then
-        echo "警告：rinetd似乎没有监听31409端口"
+    if ! netstat -tulpn | grep rinetd | grep -q "31401"; then
+        echo "警告：rinetd似乎没有监听31401端口"
         echo "尝试重启rinetd服务..."
         systemctl restart rinetd
         sleep 3
@@ -529,10 +529,10 @@ EOF
     
     # 添加端口转发故障排查指南
     echo "端口转发故障排查指南："
-    echo "1. 如果外部无法访问端口(如 http://${IPWAN}:31409/)，请检查："
+    echo "1. 如果外部无法访问端口(如 http://${IPWAN}:31401/)，请检查："
     echo "   - 确认rinetd服务正在运行: systemctl status rinetd"
-    echo "   - 检查防火墙是否允许端口: iptables -L -n | grep 31409"
-    echo "   - 检查端口是否在监听: netstat -tulpn | grep 31409"
+    echo "   - 检查防火墙是否允许端口: iptables -L -n | grep 31401"
+    echo "   - 检查端口是否在监听: netstat -tulpn | grep 31401"
     echo "   - 检查云服务商是否限制了这些端口"
     echo "   - 尝试重启rinetd服务: systemctl restart rinetd"
     echo "2. 如需手动添加端口转发规则，请编辑: /etc/rinetd.conf"
