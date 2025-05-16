@@ -481,10 +481,12 @@ EOF
         echo "dnsmasq服务运行正常"
     fi
     
+    clear
     # 测试端口转发
     echo "测试端口转发..."
     # 安装测试工具
     DEBIAN_FRONTEND=noninteractive apt install -y curl netcat-openbsd
+
     
     # 测试rinetd端口转发
     echo "检查rinetd端口转发状态..."
@@ -496,7 +498,9 @@ EOF
     fi
     
     # 检查公网端口是否可访问
-    echo "检查公网端口是否可访问..."
+    echo "——————————————————————————————————————————————————————"
+    echo ">>> +++ 检查公网端口是否可访问..."
+    echo "——————————————————————————————————————————————————————"
     # 从内部测试端口转发
     if command -v nc &> /dev/null; then
         for port in $(seq 31400 31409); do
@@ -507,8 +511,10 @@ EOF
             fi
         done
     fi
+    echo "——————————————————————————————————————————————————————"
+    echo ""
 
-    clear
+    echo "——————————————————————————————————————————————————————"
     echo ">>> +++ SoftEther VPN安装完成 +++！"
     echo "——————————————————————————————————————————————————————"
     echo "公网IP地址：$IPWAN"
@@ -530,8 +536,8 @@ EOF
     echo "   - 尝试重启rinetd服务: systemctl restart rinetd"
     echo "2. 如需手动添加端口转发规则，请编辑: /etc/rinetd.conf"
     echo "3. 如需手动开放防火墙端口: iptables -A INPUT -p tcp --dport 端口号 -j ACCEPT"
-    echo "\n服务端管理工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Server_and_VPN_Bridge/softether-vpnserver_vpnbridge-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
-    echo "客户端连接工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
+    echo "4. 服务端管理工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Server_and_VPN_Bridge/softether-vpnserver_vpnbridge-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
+    echo "5. 客户端连接工具下载：https://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Windows/SoftEther_VPN_Client/softether-vpnclient-v4.42-9798-rtm-2023.06.30-windows-x86_x64-intel.exe"
     echo "——————————————————————————————————————————————————————"
 }
 
